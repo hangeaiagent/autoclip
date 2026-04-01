@@ -45,14 +45,12 @@ async def startup_event():
     Base.metadata.create_all(bind=engine)
     logger.info("数据库表创建完成")
     
-    # 加载API密钥到环境变量
+    # 检查API密钥配置
     api_key = get_api_key()
     if api_key:
-        import os
-        os.environ["DASHSCOPE_API_KEY"] = api_key
-        logger.info("API密钥已加载到环境变量")
+        logger.info("API密钥已配置")
     else:
-        logger.warning("未找到API密钥配置")
+        logger.warning("未找到API密钥配置，请在 .env 中设置 API_KEY")
     
     # 启动WebSocket网关服务 - 已禁用，使用新的简化进度系统
     # from .services.websocket_gateway_service import websocket_gateway_service

@@ -49,7 +49,8 @@ class Settings(BaseSettings):
     # 直接定义字段，不使用嵌套的BaseModel
     database_url: str = Field(default='sqlite:///./data/autoclip.db', validation_alias=AliasChoices('DATABASE_URL'))
     redis_url: str = Field(default='redis://localhost:6379/0', validation_alias=AliasChoices('REDIS_URL'))
-    api_dashscope_api_key: str = Field(default='', validation_alias=AliasChoices('API_DASHSCOPE_API_KEY'))
+    api_base_url: str = Field(default='https://dashscope.aliyuncs.com/compatible-mode/v1', validation_alias=AliasChoices('API_BASE_URL'))
+    api_key: str = Field(default='', validation_alias=AliasChoices('API_KEY'))
     api_model_name: str = Field(default='qwen-plus', validation_alias=AliasChoices('API_MODEL_NAME'))
     api_max_tokens: int = Field(default=4096, validation_alias=AliasChoices('API_MAX_TOKENS'))
     api_timeout: int = Field(default=30, validation_alias=AliasChoices('API_TIMEOUT'))
@@ -118,11 +119,12 @@ def get_redis_url() -> str:
 
 def get_api_key() -> Optional[str]:
     """获取API密钥"""
-    return settings.api_dashscope_api_key if settings.api_dashscope_api_key else None
+    return settings.api_key if settings.api_key else None
 
 def get_model_config() -> Dict[str, Any]:
     """获取模型配置"""
     return {
+        "base_url": settings.api_base_url,
         "model_name": settings.api_model_name,
         "max_tokens": settings.api_max_tokens,
         "timeout": settings.api_timeout

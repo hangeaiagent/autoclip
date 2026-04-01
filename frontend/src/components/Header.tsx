@@ -1,6 +1,6 @@
 import React from 'react'
 import { Layout, Button, Dropdown, Avatar } from 'antd'
-import { SettingOutlined, HomeOutlined, UserOutlined, LoginOutlined, LogoutOutlined } from '@ant-design/icons'
+import { HomeOutlined, UserOutlined, LoginOutlined, LogoutOutlined } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
@@ -93,29 +93,6 @@ const Header: React.FC = () => {
         
 
         <LanguageSwitch />
-
-        <Button
-          type="text"
-          icon={<SettingOutlined />}
-          onClick={() => navigate('/settings')}
-          style={{
-            color: '#cccccc',
-            border: '1px solid transparent',
-            borderRadius: '8px',
-            height: '40px',
-            padding: '0 16px'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#2d2d2d'
-            e.currentTarget.style.borderColor = '#404040'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent'
-            e.currentTarget.style.borderColor = 'transparent'
-          }}
-        >
-          {t('header.settings')}
-        </Button>
 
         {user ? (
           <Dropdown menu={{ items: [

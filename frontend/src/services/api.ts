@@ -115,38 +115,6 @@ export interface BilibiliDownloadTask {
   updated_at: string
 }
 
-// 设置相关API
-export const settingsApi = {
-  // 获取系统配置
-  getSettings: (): Promise<any> => {
-    return api.get('/settings')
-  },
-
-  // 更新系统配置
-  updateSettings: (settings: any): Promise<any> => {
-    return api.post('/settings', settings)
-  },
-
-  // 测试API密钥
-  testApiKey: (provider: string, apiKey: string, modelName: string): Promise<{ success: boolean; error?: string }> => {
-    return api.post('/settings/test-api-key', { 
-      provider, 
-      api_key: apiKey, 
-      model_name: modelName 
-    })
-  },
-
-  // 获取所有可用模型
-  getAvailableModels: (): Promise<any> => {
-    return api.get('/settings/available-models')
-  },
-
-  // 获取当前提供商信息
-  getCurrentProvider: (): Promise<any> => {
-    return api.get('/settings/current-provider')
-  }
-}
-
 // 项目相关API
 export const projectApi = {
   // 获取视频分类配置

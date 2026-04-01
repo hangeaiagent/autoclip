@@ -8,6 +8,7 @@ pydantic
 pydantic-settings
 python-multipart
 websockets
+openai
 requests
 aiohttp
 aiofiles
