@@ -1,6 +1,7 @@
 import React from 'react'
 import { Card, Button, Tooltip, message } from 'antd'
 import { PlayCircleOutlined, EditOutlined, DownloadOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { Collection, Clip } from '../store/useProjectStore'
 import EditableCollectionTitle from './EditableCollectionTitle'
 import './CollectionCard.css'
@@ -21,6 +22,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
   onGenerateVideo,
   onUpdate
 }) => {
+  const { t } = useTranslation()
   // 按照collection.clip_ids的顺序排列clips
   const collectionClips = collection.clip_ids.map(clipId => clips.find(clip => clip.id === clipId)).filter(Boolean) as Clip[]
   
@@ -62,7 +64,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
           style={{ 
             height: '200px', 
             background: collection.thumbnail_path 
-              ? `url(http://localhost:8000/api/v1/projects/${collection.project_id}/collections/${collection.id}/thumbnail) center/cover` 
+              ? `url(/api/v1/projects/${collection.project_id}/collections/${collection.id}/thumbnail) center/cover` 
               : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             display: 'flex',
             alignItems: 'center',
@@ -111,7 +113,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
               gap: '4px'
             }}
           >
-            {collection.collection_type === 'ai_recommended' ? 'AI推荐' : '手动创建'}
+            {collection.collection_type === 'ai_recommended' ? t('collectionCard.aiRecommended') : t('collectionCard.manuallyCreated')}
           </div>
           
           {/* 左下角片段数量 */}
@@ -131,7 +133,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
               gap: '4px'
             }}
           >
-            {collectionClips.length} 个片段
+            {t('collectionCard.clipsCount', { count: collectionClips.length })}
           </div>
           
           {/* 右下角总时长 */}
@@ -209,7 +211,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
             alignItems: 'flex-start'
           }}>
             <Tooltip 
-              title={collection.collection_summary || '暂无描述'} 
+              title={collection.collection_summary || t('common.noDescription')} 
               placement="top" 
               overlayStyle={{ maxWidth: '300px' }}
               mouseEnterDelay={0.5}
@@ -229,7 +231,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
                   width: '100%'
                 }}
               >
-                {collection.collection_summary || '暂无描述'}
+                {collection.collection_summary || t('common.noDescription')}
               </div>
             </Tooltip>
           </div>
@@ -258,7 +260,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
               background: 'rgba(79, 172, 254, 0.1)'
             }}
           >
-            播放
+            {t('common.play')}
           </Button>
           {onGenerateVideo && (
             <Button 
@@ -276,14 +278,14 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
                 background: 'rgba(82, 196, 26, 0.1)'
               }}
             >
-              下载
+              {t('common.download')}
             </Button>
           )}
           <Button 
             type="text" 
             size="small"
             icon={<EditOutlined />}
-            onClick={() => message.info('开发中，敬请期待', 3)}
+            onClick={() => message.info(t('common.inDevelopment'), 3)}
             style={{
               color: '#ff7875',
               border: '1px solid rgba(255, 120, 117, 0.3)',
@@ -294,7 +296,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
               background: 'rgba(255, 120, 117, 0.1)'
             }}
           >
-            投稿
+            {t('common.upload')}
           </Button>
         </div>
       </div>

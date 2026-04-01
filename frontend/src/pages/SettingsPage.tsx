@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Layout, Card, Form, Input, Button, Typography, Space, Alert, Divider, Row, Col, Tabs, message, Select, Tag } from 'antd'
 import { KeyOutlined, SaveOutlined, ApiOutlined, SettingOutlined, InfoCircleOutlined, UserOutlined, RobotOutlined } from '@ant-design/icons'
 import { settingsApi } from '../services/api'
@@ -10,6 +11,7 @@ const { Title, Text, Paragraph } = Typography
 const { TabPane } = Tabs
 
 const SettingsPage: React.FC = () => {
+  const { t } = useTranslation()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [showBilibiliManager, setShowBilibiliManager] = useState(false)
@@ -20,36 +22,36 @@ const SettingsPage: React.FC = () => {
   // 提供商配置
   const providerConfig = {
     dashscope: {
-      name: '阿里通义千问',
+      name: t('settings.dashscope'),
       icon: <RobotOutlined />,
       color: '#1890ff',
-      description: '阿里云通义千问大模型服务',
+      description: t('settings.dashscopeDesc'),
       apiKeyField: 'dashscope_api_key',
-      placeholder: '请输入通义千问API密钥'
+      placeholder: t('settings.dashscopePlaceholder')
     },
     openai: {
-      name: 'OpenAI',
+      name: t('settings.openai'),
       icon: <RobotOutlined />,
       color: '#52c41a',
-      description: 'OpenAI GPT系列模型',
+      description: t('settings.openaiDesc'),
       apiKeyField: 'openai_api_key',
-      placeholder: '请输入OpenAI API密钥'
+      placeholder: t('settings.openaiPlaceholder')
     },
     gemini: {
-      name: 'Google Gemini',
+      name: t('settings.gemini'),
       icon: <RobotOutlined />,
       color: '#faad14',
-      description: 'Google Gemini大模型',
+      description: t('settings.geminiDesc'),
       apiKeyField: 'gemini_api_key',
-      placeholder: '请输入Gemini API密钥'
+      placeholder: t('settings.geminiPlaceholder')
     },
     siliconflow: {
-      name: '硅基流动',
+      name: t('settings.siliconflow'),
       icon: <RobotOutlined />,
       color: '#722ed1',
-      description: '硅基流动模型服务',
+      description: t('settings.siliconflowDesc'),
       apiKeyField: 'siliconflow_api_key',
-      placeholder: '请输入硅基流动API密钥'
+      placeholder: t('settings.siliconflowPlaceholder')
     }
   }
 
@@ -82,10 +84,10 @@ const SettingsPage: React.FC = () => {
     try {
       setLoading(true)
       await settingsApi.updateSettings(values)
-      message.success('配置保存成功！')
+      message.success(t('settings.configSaved'))
       await loadData() // 重新加载数据
     } catch (error: any) {
-      message.error('保存失败: ' + (error.message || '未知错误'))
+      message.error(t('settings.saveFailed') + (error.message || '未知错误'))
     } finally {
       setLoading(false)
     }
@@ -97,12 +99,12 @@ const SettingsPage: React.FC = () => {
     const modelName = form.getFieldValue('model_name')
     
     if (!apiKey) {
-      message.error('请先输入API密钥')
+      message.error(t('settings.enterApiKeyFirst'))
       return
     }
 
     if (!modelName) {
-      message.error('请先选择模型')
+      message.error(t('settings.selectModelFirst'))
       return
     }
 
@@ -110,12 +112,12 @@ const SettingsPage: React.FC = () => {
       setLoading(true)
       const result = await settingsApi.testApiKey(selectedProvider, apiKey, modelName)
       if (result.success) {
-        message.success('API密钥测试成功！')
+        message.success(t('settings.apiKeyTestSuccess'))
       } else {
-        message.error('API密钥测试失败: ' + (result.error || '未知错误'))
+        message.error(t('settings.apiKeyTestFailed') + (result.error || '未知错误'))
       }
     } catch (error: any) {
-      message.error('测试失败: ' + (error.message || '未知错误'))
+      message.error(t('settings.testFailed') + (error.message || '未知错误'))
     } finally {
       setLoading(false)
     }
@@ -131,15 +133,15 @@ const SettingsPage: React.FC = () => {
     <Content className="settings-page">
       <div className="settings-container">
         <Title level={2} className="settings-title">
-          <SettingOutlined /> 系统设置
+          <SettingOutlined /> {t('settings.systemSettings')}
         </Title>
         
         <Tabs defaultActiveKey="api" className="settings-tabs">
-          <TabPane tab="AI 模型配置" key="api">
-            <Card title="AI 模型配置" className="settings-card">
+          <TabPane tab={t('settings.aiModelConfig')} key="api">
+            <Card title={t('settings.aiModelConfig')} className="settings-card">
               <Alert
-                message="多模型提供商支持"
-                description="系统现在支持多个AI模型提供商，您可以根据需要选择不同的服务商和模型。"
+                message={t('settings.multiProviderSupport')}
+                description={t('settings.multiProviderDescription')}
                 type="info"
                 showIcon
                 className="settings-alert"
@@ -161,7 +163,7 @@ const SettingsPage: React.FC = () => {
                 {/* 当前提供商状态 */}
                 {currentProvider.available && (
                   <Alert
-                    message={`当前使用: ${currentProvider.display_name} - ${currentProvider.model}`}
+                    message={t('settings.currentlyUsing', { provider: currentProvider.display_name, model: currentProvider.model })}
                     type="success"
                     showIcon
                     style={{ marginBottom: 24 }}
@@ -170,16 +172,16 @@ const SettingsPage: React.FC = () => {
 
                 {/* 提供商选择 */}
                 <Form.Item
-                  label="选择AI模型提供商"
+                  label={t('settings.selectProvider')}
                   name="llm_provider"
                   className="form-item"
-                  rules={[{ required: true, message: '请选择AI模型提供商' }]}
+                  rules={[{ required: true, message: t('settings.selectProviderPlaceholder') }]}
                 >
                   <Select
                     value={selectedProvider}
                     onChange={handleProviderChange}
                     className="settings-input"
-                    placeholder="请选择AI模型提供商"
+                    placeholder={t('settings.selectProviderPlaceholder')}
                   >
                     {Object.entries(providerConfig).map(([key, config]) => (
                       <Select.Option key={key} value={key}>
@@ -199,8 +201,8 @@ const SettingsPage: React.FC = () => {
                   name={providerConfig[selectedProvider as keyof typeof providerConfig].apiKeyField}
                   className="form-item"
                   rules={[
-                    { required: true, message: '请输入API密钥' },
-                    { min: 10, message: 'API密钥长度不能少于10位' }
+                    { required: true, message: t('settings.enterApiKey') },
+                    { min: 10, message: t('settings.apiKeyMinLength') }
                   ]}
                 >
                   <Input.Password
@@ -212,14 +214,14 @@ const SettingsPage: React.FC = () => {
 
                 {/* 模型选择 */}
                 <Form.Item
-                  label="选择模型"
+                  label={t('settings.selectModel')}
                   name="model_name"
                   className="form-item"
-                  rules={[{ required: true, message: '请选择模型' }]}
+                  rules={[{ required: true, message: t('settings.selectModelFirst') }]}
                 >
                   <Select
                     className="settings-input"
-                    placeholder="请选择模型"
+                    placeholder={t('settings.selectModelPlaceholder')}
                     showSearch
                     filterOption={(input, option) =>
                       (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
@@ -229,7 +231,7 @@ const SettingsPage: React.FC = () => {
                       <Select.Option key={model.name} value={model.name}>
                         <Space>
                           <span>{model.display_name}</span>
-                          <Tag size="small">最大{model.max_tokens} tokens</Tag>
+                          <Tag size="small">{t('settings.maxTokens', { count: model.max_tokens })}</Tag>
                         </Space>
                       </Select.Option>
                     ))}
@@ -245,19 +247,19 @@ const SettingsPage: React.FC = () => {
                       onClick={handleTestApiKey}
                       loading={loading}
                     >
-                      测试连接
+                      {t('settings.testConnection')}
                     </Button>
                   </Space>
                 </Form.Item>
 
                 <Divider className="settings-divider" />
 
-                <Title level={4} className="section-title">模型配置</Title>
+                <Title level={4} className="section-title">{t('settings.modelConfig')}</Title>
                 
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item
-                      label="模型名称"
+                      label={t('settings.modelName')}
                       name="model_name"
                       className="form-item"
                     >
@@ -266,14 +268,14 @@ const SettingsPage: React.FC = () => {
                   </Col>
                   <Col span={12}>
                     <Form.Item
-                      label="文本分块大小"
+                      label={t('settings.chunkSize')}
                       name="chunk_size"
                       className="form-item"
                     >
                       <Input 
                         type="number" 
                         placeholder="5000" 
-                        addonAfter="字符" 
+                        addonAfter={t('settings.characters')}
                         className="settings-input"
                       />
                     </Form.Item>
@@ -283,7 +285,7 @@ const SettingsPage: React.FC = () => {
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item
-                      label="最低评分阈值"
+                      label={t('settings.minScoreThreshold')}
                       name="min_score_threshold"
                       className="form-item"
                     >
@@ -299,14 +301,14 @@ const SettingsPage: React.FC = () => {
                   </Col>
                   <Col span={12}>
                     <Form.Item
-                      label="每个合集最大切片数"
+                      label={t('settings.maxClipsPerCollection')}
                       name="max_clips_per_collection"
                       className="form-item"
                     >
                       <Input 
                         type="number" 
                         placeholder="5" 
-                        addonAfter="个" 
+                        addonAfter={t('settings.pieces')}
                         className="settings-input"
                       />
                     </Form.Item>
@@ -322,69 +324,63 @@ const SettingsPage: React.FC = () => {
                     className="save-button"
                     loading={loading}
                   >
-                    保存配置
+                    {t('settings.saveConfig')}
                   </Button>
                 </Form.Item>
               </Form>
             </Card>
 
-            <Card title="使用说明" className="settings-card">
+            <Card title={t('settings.instructions')} className="settings-card">
               <Space direction="vertical" size="large" className="instructions-space">
                 <div className="instruction-item">
                   <Title level={5} className="instruction-title">
-                    <InfoCircleOutlined /> 1. 选择AI模型提供商
+                    <InfoCircleOutlined /> {t('settings.instructionStep1Title')}
                   </Title>
                   <Paragraph className="instruction-text">
-                    系统支持多个AI模型提供商：
-                    <br />• <Text strong>阿里通义千问</Text>：访问阿里云控制台获取API密钥
-                    <br />• <Text strong>OpenAI</Text>：访问 platform.openai.com 获取API密钥
-                    <br />• <Text strong>Google Gemini</Text>：访问 ai.google.dev 获取API密钥
-                    <br />• <Text strong>硅基流动</Text>：访问 docs.siliconflow.cn 获取API密钥
+                    {t('settings.instructionStep1Desc')}
                   </Paragraph>
                 </div>
-                
+
                 <div className="instruction-item">
                   <Title level={5} className="instruction-title">
-                    <InfoCircleOutlined /> 2. 配置参数说明
+                    <InfoCircleOutlined /> {t('settings.instructionStep2Title')}
                   </Title>
                   <Paragraph className="instruction-text">
-                    • <Text strong>文本分块大小</Text>：影响处理速度和精度，建议5000字符<br />
-                    • <Text strong>评分阈值</Text>：只有高于此分数的片段才会被保留<br />
-                    • <Text strong>合集切片数</Text>：控制每个主题合集包含的片段数量
+                    {t('settings.instructionStep2Desc')}
                   </Paragraph>
                 </div>
-                
+
                 <div className="instruction-item">
                   <Title level={5} className="instruction-title">
-                    <InfoCircleOutlined /> 3. 测试连接
+                    <InfoCircleOutlined /> {t('settings.instructionStep3Title')}
                   </Title>
                   <Paragraph className="instruction-text">
-                    保存前建议先测试API密钥是否有效，确保服务正常运行
+                    {t('settings.instructionStep3Desc')}
                   </Paragraph>
                 </div>
               </Space>
             </Card>
           </TabPane>
 
-          <TabPane tab="B站管理" key="bilibili">
-            <Card title="B站账号管理" className="settings-card">
+          <TabPane tab={t('settings.bilibiliTab')} key="bilibili">
+            <Card title={t('settings.bilibiliAccountManagement')} className="settings-card">
               <div style={{ textAlign: 'center', padding: '40px 20px' }}>
                 <div style={{ marginBottom: '24px' }}>
                   <UserOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
                   <Title level={3} style={{ color: '#ffffff', margin: '0 0 8px 0' }}>
-                    B站账号管理
+                    {t('settings.bilibiliAccountManagement')}
                   </Title>
                   <Text type="secondary" style={{ color: '#b0b0b0', fontSize: '16px' }}>
-                    管理您的B站账号，支持多账号切换和快速投稿
+                    {t('settings.bilibiliDescription')}
                   </Text>
                 </div>
-                
+
                 <Space size="large">
                   <Button
                     type="primary"
                     size="large"
                     icon={<UserOutlined />}
-                    onClick={() => message.info('开发中，敬请期待', 3)}
+                    onClick={() => message.info(t('common.inDevelopment'), 3)}
                     style={{
                       borderRadius: '8px',
                       background: 'linear-gradient(45deg, #1890ff, #36cfc9)',
@@ -395,61 +391,61 @@ const SettingsPage: React.FC = () => {
                       fontSize: '16px'
                     }}
                   >
-                    管理B站账号
+                    {t('settings.manageBilibiliAccount')}
                   </Button>
                 </Space>
-                
+
                 <div style={{ marginTop: '32px', textAlign: 'left', maxWidth: '600px', margin: '32px auto 0' }}>
                   <Title level={4} style={{ color: '#ffffff', marginBottom: '16px' }}>
-                    功能特点
+                    {t('settings.features')}
                   </Title>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
-                    <div style={{ 
-                      padding: '16px', 
-                      background: 'rgba(255,255,255,0.05)', 
+                    <div style={{
+                      padding: '16px',
+                      background: 'rgba(255,255,255,0.05)',
                       borderRadius: '8px',
                       border: '1px solid #404040'
                     }}>
-                      <Text strong style={{ color: '#1890ff' }}>多账号支持</Text>
+                      <Text strong style={{ color: '#1890ff' }}>{t('settings.multiAccountSupport')}</Text>
                       <br />
                       <Text type="secondary" style={{ color: '#b0b0b0' }}>
-                        支持添加多个B站账号，方便管理和切换
+                        {t('settings.multiAccountSupportDesc')}
                       </Text>
                     </div>
-                    <div style={{ 
-                      padding: '16px', 
-                      background: 'rgba(255,255,255,0.05)', 
+                    <div style={{
+                      padding: '16px',
+                      background: 'rgba(255,255,255,0.05)',
                       borderRadius: '8px',
                       border: '1px solid #404040'
                     }}>
-                      <Text strong style={{ color: '#52c41a' }}>安全登录</Text>
+                      <Text strong style={{ color: '#52c41a' }}>{t('settings.secureLogin')}</Text>
                       <br />
                       <Text type="secondary" style={{ color: '#b0b0b0' }}>
-                        使用Cookie导入，避免风控，安全可靠
+                        {t('settings.secureLoginDesc')}
                       </Text>
                     </div>
-                    <div style={{ 
-                      padding: '16px', 
-                      background: 'rgba(255,255,255,0.05)', 
+                    <div style={{
+                      padding: '16px',
+                      background: 'rgba(255,255,255,0.05)',
                       borderRadius: '8px',
                       border: '1px solid #404040'
                     }}>
-                      <Text strong style={{ color: '#faad14' }}>快速投稿</Text>
+                      <Text strong style={{ color: '#faad14' }}>{t('settings.quickUpload')}</Text>
                       <br />
                       <Text type="secondary" style={{ color: '#b0b0b0' }}>
-                        在切片详情页直接选择账号投稿，操作简单
+                        {t('settings.quickUploadDesc')}
                       </Text>
                     </div>
-                    <div style={{ 
-                      padding: '16px', 
-                      background: 'rgba(255,255,255,0.05)', 
+                    <div style={{
+                      padding: '16px',
+                      background: 'rgba(255,255,255,0.05)',
                       borderRadius: '8px',
                       border: '1px solid #404040'
                     }}>
-                      <Text strong style={{ color: '#722ed1' }}>批量管理</Text>
+                      <Text strong style={{ color: '#722ed1' }}>{t('settings.batchManagement')}</Text>
                       <br />
                       <Text type="secondary" style={{ color: '#b0b0b0' }}>
-                        支持批量上传多个切片，提高效率
+                        {t('settings.batchManagementDesc')}
                       </Text>
                     </div>
                   </div>
@@ -464,7 +460,7 @@ const SettingsPage: React.FC = () => {
           visible={showBilibiliManager}
           onClose={() => setShowBilibiliManager(false)}
           onUploadSuccess={() => {
-            message.success('操作成功')
+            message.success(t('common.operationSuccess'))
           }}
         />
       </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Card, Button, Tooltip, Modal, message } from 'antd'
 import { PlayCircleOutlined, DownloadOutlined, ClockCircleOutlined, StarFilled, EditOutlined, UploadOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import ReactPlayer from 'react-player'
 import { Clip } from '../store/useProjectStore'
 import SubtitleEditor from './SubtitleEditor'
@@ -25,6 +26,7 @@ const ClipCard: React.FC<ClipCardProps> = ({
   projectId,
   onClipUpdate
 }) => {
+  const { t } = useTranslation()
   const [showPlayer, setShowPlayer] = useState(false)
   const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null)
   const [showSubtitleEditor, setShowSubtitleEditor] = useState(false)
@@ -68,7 +70,7 @@ const ClipCard: React.FC<ClipCardProps> = ({
       await onDownload(clip.id)
     } catch (error) {
       console.error('下载失败:', error)
-      message.error('下载失败')
+      message.error(t('clipCard.downloadFailed'))
     }
   }
 
@@ -78,7 +80,7 @@ const ClipCard: React.FC<ClipCardProps> = ({
 
   const handleOpenSubtitleEditor = async () => {
     // 显示开发中提示
-    message.info('开发中，敬请期待')
+    message.info(t('common.inDevelopment'))
   }
 
   const handleSubtitleEditorClose = () => {
@@ -200,7 +202,7 @@ const ClipCard: React.FC<ClipCardProps> = ({
       return clip.outline
     }
     
-    return '暂无内容要点'
+    return t('common.noContentPoints')
   }
 
   const textRef = useRef<HTMLDivElement>(null)
@@ -276,7 +278,7 @@ const ClipCard: React.FC<ClipCardProps> = ({
                 }}
               >
                 <StarFilled style={{ fontSize: '12px' }} />
-                {(clip.final_score * 100).toFixed(0)}分
+                {(clip.final_score * 100).toFixed(0)}{t('common.score')}
               </div>
               
               {/* 左下角时间区间 */}
@@ -344,7 +346,7 @@ const ClipCard: React.FC<ClipCardProps> = ({
                 alignItems: 'flex-start'
               }}>
                 <EditableTitle
-                  title={clip.title || clip.generated_title || '未命名片段'}
+                  title={clip.title || clip.generated_title || t('common.unnamedClip')}
                   clipId={clip.id}
                   onTitleUpdate={handleTitleUpdate}
                   style={{ 
@@ -415,7 +417,7 @@ const ClipCard: React.FC<ClipCardProps> = ({
                   background: 'rgba(79, 172, 254, 0.1)'
                 }}
               >
-                播放
+                {t('common.play')}
               </Button>
               <Button 
                 type="text" 
@@ -432,13 +434,13 @@ const ClipCard: React.FC<ClipCardProps> = ({
                   background: 'rgba(82, 196, 26, 0.1)'
                 }}
               >
-                下载
+                {t('common.download')}
               </Button>
               <Button 
                 type="text" 
                 size="small"
                 icon={<UploadOutlined />}
-                onClick={() => message.info('开发中，敬请期待', 3)}
+                onClick={() => message.info(t('common.inDevelopment'), 3)}
                 style={{
                   color: '#ff7875',
                   border: '1px solid rgba(255, 120, 117, 0.3)',
@@ -449,7 +451,7 @@ const ClipCard: React.FC<ClipCardProps> = ({
                   background: 'rgba(255, 120, 117, 0.1)'
                 }}
               >
-                投稿
+                {t('common.upload')}
               </Button>
             </div>
           </div>
@@ -461,22 +463,22 @@ const ClipCard: React.FC<ClipCardProps> = ({
         onCancel={handleClosePlayer}
         footer={[
           <Button key="download" type="primary" icon={<DownloadOutlined />} onClick={handleDownloadWithTitle}>
-            下载视频
+            {t('clipCard.downloadVideo')}
           </Button>,
           <Button 
             key="subtitle" 
             icon={<EditOutlined />} 
             onClick={handleOpenSubtitleEditor}
           >
-            字幕编辑
+            {t('clipCard.subtitleEdit')}
           </Button>,
           <Button 
             key="upload" 
             type="default" 
             icon={<UploadOutlined />} 
-            onClick={() => message.info('开发中，敬请期待', 3)}
+            onClick={() => message.info(t('common.inDevelopment'), 3)}
           >
-            投稿到B站
+            {t('clipCard.uploadToBilibili')}
           </Button>
         ]}
         width={800}
@@ -499,7 +501,7 @@ const ClipCard: React.FC<ClipCardProps> = ({
             paddingRight: '30px' // 为关闭按钮留出空间
           }}>
             <EditableTitle
-              title={clip.title || clip.generated_title || '视频预览'}
+              title={clip.title || clip.generated_title || t('common.videoPreview')}
               clipId={clip.id}
               onTitleUpdate={(newTitle) => {
                 // 更新clip的标题
@@ -567,7 +569,7 @@ const ClipCard: React.FC<ClipCardProps> = ({
         onClose={() => setShowBilibiliManager(false)}
         projectId={projectId || ''}
         clipIds={[clip.id]}
-        clipTitles={[clip.title || clip.generated_title || '视频片段']}
+        clipTitles={[clip.title || clip.generated_title || t('clipCard.videoClip')]}
         onUploadSuccess={() => {
           // 投稿成功后可以刷新数据或显示提示
           console.log('投稿成功')

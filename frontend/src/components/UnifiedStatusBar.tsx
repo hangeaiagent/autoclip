@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Progress, Space, Typography, Tag } from 'antd'
 import { 
   DownloadOutlined, 
@@ -31,6 +32,7 @@ export const UnifiedStatusBar: React.FC<UnifiedStatusBarProps> = ({
   onStatusChange,
   onDownloadProgressUpdate
 }) => {
+  const { t } = useTranslation()
   const { getProgress, startPolling, stopPolling } = useSimpleProgressStore()
   const [isPolling, setIsPolling] = useState(false)
   const [currentDownloadProgress, setCurrentDownloadProgress] = useState(downloadProgress)
@@ -64,7 +66,7 @@ export const UnifiedStatusBar: React.FC<UnifiedStatusBarProps> = ({
       const pollDownloadProgress = async () => {
         try {
           console.log(`轮询下载进度: ${projectId}`)
-          const response = await fetch(`http://localhost:8000/api/v1/projects/${projectId}`)
+          const response = await fetch(`/api/v1/projects/${projectId}`)
           if (response.ok) {
             const projectData = await response.json()
             console.log('项目数据:', projectData)
@@ -133,7 +135,7 @@ export const UnifiedStatusBar: React.FC<UnifiedStatusBarProps> = ({
           fontSize: '8px', 
           lineHeight: '9px'
         }}>
-          导入中
+          {t('statusBar.importing')}
         </div>
       </div>
     )
@@ -163,7 +165,7 @@ export const UnifiedStatusBar: React.FC<UnifiedStatusBarProps> = ({
           fontSize: '8px', 
           lineHeight: '9px'
         }}>
-          下载中
+          {t('statusBar.downloading')}
         </div>
       </div>
     )
@@ -195,7 +197,7 @@ export const UnifiedStatusBar: React.FC<UnifiedStatusBarProps> = ({
           fontSize: '8px', 
           lineHeight: '9px'
         }}>
-          初始化中...
+          {t('statusBar.initializing')}
         </div>
       </div>
       )
@@ -203,6 +205,15 @@ export const UnifiedStatusBar: React.FC<UnifiedStatusBarProps> = ({
 
     const { stage, percent, message } = progress
     const stageDisplayName = getStageDisplayName(stage)
+    const stageDisplayMap: Record<string, string> = {
+      'INGEST': t('statusBar.stageIngest'),
+      'SUBTITLE': t('statusBar.stageSubtitle'),
+      'ANALYZE': t('statusBar.stageAnalyze'),
+      'HIGHLIGHT': t('statusBar.stageHighlight'),
+      'EXPORT': t('statusBar.stageExport'),
+      'DONE': t('statusBar.stageDone')
+    }
+    const localizedStageName = stageDisplayMap[stage] || stageDisplayName
     const stageColor = getStageColor(stage)
     const failed = isFailed(message)
 
@@ -225,15 +236,15 @@ export const UnifiedStatusBar: React.FC<UnifiedStatusBarProps> = ({
           fontWeight: 600, 
           lineHeight: '12px'
         }}>
-          {failed ? '✗ 失败' : `${percent}%`}
+          {failed ? t('statusBar.failedMark') : `${percent}%`}
         </div>
-        <div style={{ 
-          color: '#999999', 
-          fontSize: '8px', 
+        <div style={{
+          color: '#999999',
+          fontSize: '8px',
           lineHeight: '9px',
-          minHeight: '9px' // 确保失败状态也有固定高度
+          minHeight: '9px'
         }}>
-          {failed ? '' : stageDisplayName}
+          {failed ? '' : localizedStageName}
         </div>
       </div>
     )
@@ -256,14 +267,14 @@ export const UnifiedStatusBar: React.FC<UnifiedStatusBarProps> = ({
           fontWeight: 600, 
           lineHeight: '12px'
         }}>
-          ✓
+          {t('statusBar.completedMark')}
         </div>
-        <div style={{ 
-          color: '#999999', 
-          fontSize: '8px', 
+        <div style={{
+          color: '#999999',
+          fontSize: '8px',
           lineHeight: '9px'
         }}>
-          已完成
+          {t('statusBar.completed')}
         </div>
       </div>
     )
@@ -286,15 +297,15 @@ export const UnifiedStatusBar: React.FC<UnifiedStatusBarProps> = ({
           fontWeight: 600, 
           lineHeight: '12px'
         }}>
-          ✗ 失败
+          {t('statusBar.failedMark')}
         </div>
-        <div style={{ 
-          color: '#999999', 
-          fontSize: '8px', 
+        <div style={{
+          color: '#999999',
+          fontSize: '8px',
           lineHeight: '9px',
-          minHeight: '9px' // 确保失败状态也有固定高度
+          minHeight: '9px'
         }}>
-          处理失败
+          {t('statusBar.processingFailed')}
         </div>
       </div>
     )
@@ -316,15 +327,15 @@ export const UnifiedStatusBar: React.FC<UnifiedStatusBarProps> = ({
         fontWeight: 600, 
         lineHeight: '12px'
       }}>
-        ○ 等待中
+        {t('statusBar.waiting')}
       </div>
-      <div style={{ 
-        color: '#999999', 
-        fontSize: '8px', 
+      <div style={{
+        color: '#999999',
+        fontSize: '8px',
         lineHeight: '9px',
-        minHeight: '9px' // 确保等待状态也有固定高度
+        minHeight: '9px'
       }}>
-        等待处理
+        {t('statusBar.waitingProcess')}
       </div>
     </div>
   )

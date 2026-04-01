@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { 
-  Layout, 
-  Typography, 
-  Select, 
-  Spin, 
+import { useTranslation } from 'react-i18next'
+import {
+  Layout,
+  Typography,
+  Select,
+  Spin,
   Empty,
-  message 
+  message
 } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import ProjectCard from '../components/ProjectCard'
@@ -22,6 +23,7 @@ const { Title, Text } = Typography
 const { Option } = Select
 
 const HomePage: React.FC = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { projects, setProjects, deleteProject, loading, setLoading } = useProjectStore()
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -74,7 +76,7 @@ const HomePage: React.FC = () => {
       const projects = await projectApi.getProjects()
       setProjects(projects || [])
     } catch (error) {
-      message.error('加载项目失败')
+      message.error(t('home.loadProjectsFailed'))
       console.error('Load projects error:', error)
       // 如果API调用失败，设置空数组
       setProjects([])
@@ -101,9 +103,9 @@ const HomePage: React.FC = () => {
     try {
       await projectApi.deleteProject(id)
       deleteProject(id)
-      message.success('项目删除成功')
+      message.success(t('home.deleteSuccess'))
     } catch (error) {
-      message.error('删除项目失败')
+      message.error(t('home.deleteFailed'))
       console.error('Delete project error:', error)
     }
   }
@@ -113,17 +115,17 @@ const HomePage: React.FC = () => {
       // 查找项目状态
       const project = projects.find(p => p.id === projectId)
       if (!project) {
-        message.error('项目不存在')
+        message.error(t('home.projectNotExist'))
         return
       }
       
       // 统一使用retryProcessing API，它会自动处理视频文件不存在的情况
       await projectApi.retryProcessing(projectId)
-      message.success('已开始重试处理项目')
+      message.success(t('home.retryStarted'))
       
       await loadProjects()
     } catch (error) {
-      message.error('重试失败，请稍后再试')
+      message.error(t('home.retryFailed'))
       console.error('Retry project error:', error)
     }
   }
@@ -131,7 +133,7 @@ const HomePage: React.FC = () => {
   const handleStartProcessing = async (projectId: string) => {
     try {
       await projectApi.startProcessing(projectId)
-      message.success('项目已开始处理，请稍等片刻查看进度')
+      message.success(t('home.processingStarted'))
       // 立即刷新项目列表以显示最新状态
       setTimeout(async () => {
         try {
@@ -141,13 +143,13 @@ const HomePage: React.FC = () => {
         }
       }, 1000)
     } catch (error: unknown) {
-      const errorMessage = (error as { userMessage?: string })?.userMessage || '启动处理失败'
+      const errorMessage = (error as { userMessage?: string })?.userMessage || t('home.startProcessingFailed')
       message.error(errorMessage)
       console.error('Start processing error:', error)
       
       // 如果是超时错误，提示用户项目可能仍在处理
       if ((error as { code?: string; message?: string })?.code === 'ECONNABORTED' || (error as { code?: string; message?: string })?.message?.includes('timeout')) {
-        message.info('请求超时，但项目可能已开始处理，请查看项目状态', 5)
+        message.info(t('home.requestTimeout'), 5)
         // 延迟刷新项目列表
         setTimeout(async () => {
           try {
@@ -163,7 +165,7 @@ const HomePage: React.FC = () => {
   const handleProjectCardClick = (project: Project) => {
     // 导入中状态的项目不能点击进入详情页
     if (project.status === 'pending') {
-      message.warning('项目正在导入中，请稍后再查看详情')
+      message.warning(t('home.projectImporting'))
       return
     }
     
@@ -228,7 +230,7 @@ const HomePage: React.FC = () => {
                    }}
                    onClick={() => setActiveTab('bilibili')}
                  >
-                   📺 链接导入
+                   📺 {t('home.linkImport')}
                  </button>
                 <button 
                    style={{
@@ -245,7 +247,7 @@ const HomePage: React.FC = () => {
                    }}
                    onClick={() => setActiveTab('upload')}
                  >
-                   📁 文件导入
+                   📁 {t('home.fileImport')}
                  </button>
               </div>
               
@@ -262,7 +264,7 @@ const HomePage: React.FC = () => {
                   <FileUpload onUploadSuccess={async (projectId: string) => {
                     // 处理完成后刷新项目列表
                     await loadProjects()
-                    message.success('项目创建成功，正在处理中...')
+                    message.success(t('home.projectCreatedProcessing'))
                   }} />
                 )}
               </div>
@@ -302,7 +304,7 @@ const HomePage: React.FC = () => {
                     backgroundClip: 'text'
                   }}
                 >
-                  我的项目
+                  {t('home.myProjects')}
                 </Title>
                 <div style={{
                   padding: '8px 16px',
@@ -312,7 +314,7 @@ const HomePage: React.FC = () => {
                   backdropFilter: 'blur(10px)'
                 }}>
                   <Text style={{ color: '#4facfe', fontWeight: 600, fontSize: '14px' }}>
-                    共 {filteredProjects.length} 个项目
+                    {t('home.totalProjects', { count: filteredProjects.length })}
                   </Text>
                 </div>
               </div>
@@ -323,7 +325,7 @@ const HomePage: React.FC = () => {
                 alignItems: 'center'
               }}>
                 <Select
-                  placeholder="选择状态"
+                  placeholder={t('home.selectStatus')}
                   value={statusFilter}
                   onChange={setStatusFilter}
                   style={{ 
@@ -357,10 +359,10 @@ const HomePage: React.FC = () => {
                   }
                   allowClear
                 >
-                  <Option value="all" style={{ color: '#ffffff' }}>全部状态</Option>
-                  <Option value="completed" style={{ color: '#52c41a' }}>已完成</Option>
-                  <Option value="processing" style={{ color: '#1890ff' }}>处理中</Option>
-                  <Option value="error" style={{ color: '#ff4d4f' }}>处理失败</Option>
+                  <Option value="all" style={{ color: '#ffffff' }}>{t('home.allStatus')}</Option>
+                  <Option value="completed" style={{ color: '#52c41a' }}>{t('home.completed')}</Option>
+                  <Option value="processing" style={{ color: '#1890ff' }}>{t('home.processing')}</Option>
+                  <Option value="error" style={{ color: '#ff4d4f' }}>{t('home.failed')}</Option>
                 </Select>
               </div>
             </div>
@@ -381,7 +383,7 @@ const HomePage: React.FC = () => {
                      color: '#cccccc',
                      fontSize: '16px'
                    }}>
-                     正在加载项目列表...
+                     {t('home.loadingProjects')}
                    </div>
                  </div>
                ) : filteredProjects.length === 0 ? (
@@ -397,7 +399,7 @@ const HomePage: React.FC = () => {
                      description={
                        <div>
                          <Text type="secondary">
-                           {projects.length === 0 ? '还没有项目，请使用上方的导入区域创建第一个项目' : '没有找到匹配的项目'}
+                           {projects.length === 0 ? t('home.noProjectsYet') : t('home.noMatchingProjects')}
                          </Text>
                        </div>
                      }

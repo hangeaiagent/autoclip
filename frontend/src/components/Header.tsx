@@ -2,13 +2,16 @@ import React from 'react'
 import { Layout, Button, Dropdown, Avatar } from 'antd'
 import { SettingOutlined, HomeOutlined, UserOutlined, LoginOutlined, LogoutOutlined } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
+import LanguageSwitch from './LanguageSwitch'
 
 const { Header: AntHeader } = Layout
 
 const Header: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useTranslation()
   const { user, logout } = useAuth()
   const isHomePage = location.pathname === '/'
 
@@ -84,11 +87,13 @@ const Header: React.FC = () => {
               boxShadow: '0 2px 8px rgba(79, 172, 254, 0.3)'
             }}
           >
-            返回首页
+            {t('header.backToHome')}
           </Button>
         )}
         
-        
+
+        <LanguageSwitch />
+
         <Button
           type="text"
           icon={<SettingOutlined />}
@@ -109,14 +114,14 @@ const Header: React.FC = () => {
             e.currentTarget.style.borderColor = 'transparent'
           }}
         >
-          设置
+          {t('header.settings')}
         </Button>
 
         {user ? (
           <Dropdown menu={{ items: [
             { key: 'user', label: user.email, disabled: true },
             { type: 'divider' },
-            { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, onClick: logout },
+            { key: 'logout', label: t('header.logout'), icon: <LogoutOutlined />, onClick: logout },
           ]}} placement="bottomRight">
             <Avatar style={{ backgroundColor: '#4facfe', cursor: 'pointer' }} icon={<UserOutlined />} />
           </Dropdown>
@@ -134,7 +139,7 @@ const Header: React.FC = () => {
               color: '#fff',
             }}
           >
-            agentpit 授权登陆
+            {t('header.login')}
           </Button>
         )}
       </div>

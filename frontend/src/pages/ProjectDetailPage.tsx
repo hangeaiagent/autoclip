@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { 
   Layout, 
   Card, 
@@ -33,6 +34,7 @@ const { Title, Text } = Typography
 const ProjectDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { 
     currentProject, 
     loading, 
@@ -150,7 +152,7 @@ const ProjectDetailPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load project:', error)
-      message.error('加载项目失败')
+      message.error(t('projectDetail.loadFailed'))
     }
   }
 
@@ -170,11 +172,11 @@ const ProjectDetailPage: React.FC = () => {
     if (!id) return
     try {
       await projectApi.startProcessing(id)
-      message.success('开始处理')
+      message.success(t('projectDetail.startProcessing'))
       loadProcessingStatus()
     } catch (error) {
       console.error('Failed to start processing:', error)
-      message.error('启动处理失败')
+      message.error(t('home.startProcessingFailed'))
     }
   }
 
@@ -190,10 +192,10 @@ const ProjectDetailPage: React.FC = () => {
         created_at: new Date().toISOString()
       })
       setShowCreateCollection(false)
-      message.success('合集创建成功')
+      message.success(t('projectDetail.collectionCreated'))
     } catch (error) {
       console.error('Failed to create collection:', error)
-      message.error('创建合集失败')
+      message.error(t('projectDetail.createCollectionFailed'))
     }
   }
 
@@ -206,10 +208,10 @@ const ProjectDetailPage: React.FC = () => {
     if (!id) return
     try {
       await removeClipFromCollection(id, collectionId, clipId)
-      message.success('切片已从合集中移除')
+      message.success(t('projectDetail.clipRemovedFromCollection'))
     } catch (error) {
       console.error('Failed to remove clip from collection:', error)
-      message.error('移除切片失败')
+      message.error(t('projectDetail.removeClipFailed'))
     }
   }
 
@@ -219,10 +221,10 @@ const ProjectDetailPage: React.FC = () => {
       await deleteCollection(id, collectionId)
       setShowCollectionDetail(false)
       setSelectedCollection(null)
-      message.success('合集已删除')
+      message.success(t('projectDetail.collectionDeleted'))
     } catch (error) {
       console.error('Failed to delete collection:', error)
-      message.error('删除合集失败')
+      message.error(t('projectDetail.deleteCollectionFailed'))
     }
   }
 
@@ -230,10 +232,10 @@ const ProjectDetailPage: React.FC = () => {
     if (!id) return
     try {
       await reorderCollectionClips(id, collectionId, newClipIds)
-      message.success('合集顺序已更新')
+      message.success(t('projectDetail.collectionOrderUpdated'))
     } catch (error) {
       console.error('Failed to reorder collection clips:', error)
-      message.error('更新合集顺序失败')
+      message.error(t('projectDetail.updateOrderFailed'))
     }
   }
 
@@ -241,10 +243,10 @@ const ProjectDetailPage: React.FC = () => {
     if (!id) return
     try {
       await addClipToCollection(id, collectionId, clipIds)
-      message.success('切片已添加到合集')
+      message.success(t('projectDetail.clipsAddedToCollection'))
     } catch (error) {
       console.error('Failed to add clip to collection:', error)
-      message.error('添加切片失败')
+      message.error(t('projectDetail.addClipsFailed'))
     }
   }
 
@@ -284,12 +286,12 @@ const ProjectDetailPage: React.FC = () => {
     return (
       <Content style={{ padding: '24px' }}>
         <Alert
-          message="加载失败"
-          description={error || '项目不存在'}
+          message={t('projectDetail.loadError')}
+          description={error || t('projectDetail.projectNotExist')}
           type="error"
           action={
             <Button size="small" onClick={() => navigate('/')}>
-              返回首页
+              {t('projectDetail.backToHome')}
             </Button>
           }
         />
@@ -308,7 +310,7 @@ const ProjectDetailPage: React.FC = () => {
             onClick={() => navigate('/')}
             style={{ padding: 0, marginBottom: '8px' }}
           >
-            返回项目列表
+            {t('projectDetail.backToProjects')}
           </Button>
           <Title level={2} style={{ margin: 0 }}>
             {currentProject.name}
@@ -322,7 +324,7 @@ const ProjectDetailPage: React.FC = () => {
               onClick={handleStartProcessing}
               loading={statusLoading}
             >
-              开始处理
+              {t('projectDetail.startProcessing')}
             </Button>
           )}
         </Space>
@@ -336,9 +338,9 @@ const ProjectDetailPage: React.FC = () => {
             <Card style={{ marginBottom: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <div>
-                  <Title level={4} style={{ margin: 0 }}>AI推荐合集</Title>
+                  <Title level={4} style={{ margin: 0 }}>{t('projectDetail.aiCollections')}</Title>
                   <Text type="secondary">
-                    AI 已为您推荐了 {currentProject.collections.length} 个主题合集
+                    {t('projectDetail.aiCollectionsCount', { count: currentProject.collections.length })}
                   </Text>
                 </div>
                 <Button 
@@ -355,7 +357,7 @@ const ProjectDetailPage: React.FC = () => {
                     fontSize: '14px'
                   }}
                 >
-                  创建合集
+                  {t('projectDetail.createCollection')}
                 </Button>
               </div>
               
@@ -411,16 +413,16 @@ const ProjectDetailPage: React.FC = () => {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
               <div>
-                <Title level={4} style={{ margin: 0, color: '#ffffff', fontWeight: 600 }}>视频片段</Title>
+                <Title level={4} style={{ margin: 0, color: '#ffffff', fontWeight: 600 }}>{t('projectDetail.videoClips')}</Title>
                 <Text type="secondary" style={{ color: '#b0b0b0', fontSize: '14px' }}>
-                  AI 已为您生成了 {currentProject.clips?.length || 0} 个精彩片段
+                  {t('projectDetail.aiClipsCount', { count: currentProject.clips?.length || 0 })}
                 </Text>
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 {/* 排序控件 - 暗黑主题优化 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Text style={{ fontSize: '13px', color: '#b0b0b0', fontWeight: 500 }}>排序</Text>
+                  <Text style={{ fontSize: '13px', color: '#b0b0b0', fontWeight: 500 }}>{t('projectDetail.sort')}</Text>
                   <Radio.Group
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
@@ -449,7 +451,7 @@ const ProjectDetailPage: React.FC = () => {
                          transition: 'all 0.2s ease'
                        }}
                      >
-                       时间
+                       {t('projectDetail.time')}
                      </Radio.Button>
                      <Radio.Button 
                        value="score" 
@@ -468,7 +470,7 @@ const ProjectDetailPage: React.FC = () => {
                          transition: 'all 0.2s ease'
                        }}
                      >
-                       评分
+                       {t('projectDetail.scoreSort')}
                      </Radio.Button>
                   </Radio.Group>
                 </div>
@@ -489,7 +491,7 @@ const ProjectDetailPage: React.FC = () => {
                         fontSize: '14px'
                       }}
                     >
-                      创建合集
+                      {t('projectDetail.createCollection')}
                     </Button>
                   )}
                 </Space>
@@ -537,7 +539,7 @@ const ProjectDetailPage: React.FC = () => {
               }}>
                 <Empty 
                   description={
-                    <Text style={{ color: '#888', fontSize: '14px' }}>暂无视频片段</Text>
+                    <Text style={{ color: '#888', fontSize: '14px' }}>{t('projectDetail.noVideoClips')}</Text>
                   }
                   image={<PlayCircleOutlined style={{ fontSize: '48px', color: '#555' }} />}
                 />
@@ -559,9 +561,9 @@ const ProjectDetailPage: React.FC = () => {
               image={<PlayCircleOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
               description={
                 <div>
-                  <Text>项目还未完成处理</Text>
+                  <Text>{t('projectDetail.projectNotCompleted')}</Text>
                   <br />
-                  <Text type="secondary">处理完成后可查看视频片段和AI合集</Text>
+                  <Text type="secondary">{t('projectDetail.viewAfterProcessing')}</Text>
                 </div>
               }
             />
