@@ -148,7 +148,8 @@ export const useWebSocket = (options: UseWebSocketOptions) => {
     }
 
     setConnectionStatus('connecting');
-    const wsUrl = `ws://localhost:8000/api/v1/ws/${userId}`;
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/api/v1/ws/${userId}`;
     
     try {
       const ws = new WebSocket(wsUrl);

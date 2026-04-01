@@ -1,14 +1,20 @@
 import React from 'react'
-import { Layout, Button } from 'antd'
-import { SettingOutlined, HomeOutlined } from '@ant-design/icons'
+import { Layout, Button, Dropdown, Avatar } from 'antd'
+import { SettingOutlined, HomeOutlined, UserOutlined, LoginOutlined, LogoutOutlined } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const { Header: AntHeader } = Layout
 
 const Header: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  const { user, logout } = useAuth()
   const isHomePage = location.pathname === '/'
+
+  const handleLogin = () => {
+    window.location.href = `/api/auth/agentpit/sso?returnUrl=${encodeURIComponent(location.pathname)}`
+  }
 
   return (
     <AntHeader 
@@ -83,8 +89,8 @@ const Header: React.FC = () => {
         )}
         
         
-        <Button 
-          type="text" 
+        <Button
+          type="text"
           icon={<SettingOutlined />}
           onClick={() => navigate('/settings')}
           style={{
@@ -105,6 +111,32 @@ const Header: React.FC = () => {
         >
           设置
         </Button>
+
+        {user ? (
+          <Dropdown menu={{ items: [
+            { key: 'user', label: user.email, disabled: true },
+            { type: 'divider' },
+            { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, onClick: logout },
+          ]}} placement="bottomRight">
+            <Avatar style={{ backgroundColor: '#4facfe', cursor: 'pointer' }} icon={<UserOutlined />} />
+          </Dropdown>
+        ) : (
+          <Button
+            icon={<LoginOutlined />}
+            onClick={handleLogin}
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              border: 'none',
+              borderRadius: '8px',
+              height: '40px',
+              padding: '0 20px',
+              fontWeight: 500,
+              color: '#fff',
+            }}
+          >
+            agentpit 授权登陆
+          </Button>
+        )}
       </div>
     </AntHeader>
   )

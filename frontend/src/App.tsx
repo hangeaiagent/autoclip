@@ -4,24 +4,29 @@ import { Layout } from 'antd'
 import HomePage from './pages/HomePage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
 import SettingsPage from './pages/SettingsPage'
+import SsoCallbackPage from './pages/SsoCallbackPage'
 import Header from './components/Header'
+import { AuthProvider } from './context/AuthContext'
 
 const { Content } = Layout
 
 function App() {
   console.log('🎬 App组件已加载');
-  
+
   return (
-    <Layout>
-      <Header />
-      <Content>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/project/:id" element={<ProjectDetailPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-        </Routes>
-      </Content>
-    </Layout>
+    <AuthProvider>
+      <Layout>
+        <Header />
+        <Content>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/project/:id" element={<ProjectDetailPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/auth/sso/callback" element={<SsoCallbackPage />} />
+          </Routes>
+        </Content>
+      </Layout>
+    </AuthProvider>
   )
 }
 

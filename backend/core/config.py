@@ -61,6 +61,16 @@ class Settings(BaseSettings):
     log_format: str = Field(default='%(asctime)s - %(name)s - %(levelname)s - %(message)s', validation_alias=AliasChoices('LOG_FORMAT'))
     log_file: str = Field(default='backend.log', validation_alias=AliasChoices('LOG_FILE'))
 
+    # AgentPit OAuth
+    agentpit_client_id: str = Field(default='', validation_alias=AliasChoices('AGENTPIT_CLIENT_ID'))
+    agentpit_client_secret: str = Field(default='', validation_alias=AliasChoices('AGENTPIT_CLIENT_SECRET'))
+    agentpit_redirect_uri: str = Field(default='', validation_alias=AliasChoices('AGENTPIT_REDIRECT_URI'))
+    agentpit_authorize_url: str = Field(default='https://agentpit.io/api/oauth/authorize', validation_alias=AliasChoices('AGENTPIT_AUTHORIZE_URL'))
+    agentpit_token_url: str = Field(default='https://agentpit.io/api/oauth/token', validation_alias=AliasChoices('AGENTPIT_TOKEN_URL'))
+    agentpit_userinfo_url: str = Field(default='https://agentpit.io/api/oauth/userinfo', validation_alias=AliasChoices('AGENTPIT_USERINFO_URL'))
+    agentpit_charge_url: str = Field(default='https://www.agentpit.io/api/v1/partner/charge', validation_alias=AliasChoices('AGENTPIT_CHARGE_URL'))
+    secret_key: str = Field(default='autoclip-jwt-secret-change-in-production', validation_alias=AliasChoices('SECRET_KEY'))
+
 # 全局配置实例
 settings = Settings()
 
