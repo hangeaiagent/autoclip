@@ -90,22 +90,7 @@ async def upload_files(
         # 更新项目的视频路径
         project.video_path = str(video_path)
         project_service.db.commit()
-        
-        # 立即生成缩略图（同步处理）
-        try:
-            from ...utils.thumbnail_generator import generate_project_thumbnail
-            logger.info(f"开始为项目 {project_id} 生成缩略图...")
-            thumbnail_data = generate_project_thumbnail(project_id, video_path)
-            if thumbnail_data:
-                project.thumbnail = thumbnail_data
-                project_service.db.commit()
-                logger.info(f"项目 {project_id} 缩略图生成并保存成功")
-            else:
-                logger.warning(f"项目 {project_id} 缩略图生成失败")
-        except Exception as e:
-            logger.error(f"生成项目缩略图时发生错误: {e}")
-            # 缩略图生成失败不影响主流程，会在异步任务中重试
-        
+
         # 处理字幕文件（如果用户提供了）
         srt_path = None
         if srt_file:

@@ -135,7 +135,7 @@ export const projectApi = {
   },
 
   // 上传文件并创建项目
-  uploadFiles: async (data: UploadFilesRequest): Promise<Project> => {
+  uploadFiles: async (data: UploadFilesRequest & { onUploadProgress?: (percent: number) => void }): Promise<Project> => {
     const formData = new FormData()
     formData.append('video_file', data.video_file)
     if (data.srt_file) {
@@ -145,10 +145,16 @@ export const projectApi = {
     if (data.video_category) {
       formData.append('video_category', data.video_category)
     }
-    
+
     return api.post('/projects/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (progressEvent) => {
+        if (data.onUploadProgress && progressEvent.total) {
+          const percent = Math.round((progressEvent.loaded / progressEvent.total) * 95)
+          data.onUploadProgress(percent)
+        }
       },
     })
   },

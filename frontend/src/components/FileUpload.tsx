@@ -94,36 +94,14 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
     setUploadProgress(0)
     
     try {
-      // 模拟上传进度，更真实的进度显示
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 85) {
-            clearInterval(progressInterval)
-            return prev
-          }
-          // 使用递减的增量，模拟真实上传进度
-          const increment = Math.max(1, Math.floor((90 - prev) / 10))
-          return prev + increment
-        })
-      }, 300)
-
-      console.log('开始上传文件:', {
-        video_file: files.video.name,
-        srt_file: files.srt?.name || '(将使用语音识别生成)',
-        project_name: projectName.trim(),
-        video_category: selectedCategory
-      })
-
       const newProject = await projectApi.uploadFiles({
         video_file: files.video,
         srt_file: files.srt,
         project_name: projectName.trim(),
-        video_category: selectedCategory
+        video_category: selectedCategory,
+        onUploadProgress: (percent) => setUploadProgress(percent)
       })
-      
-      console.log('上传成功，项目信息:', newProject)
-      
-      clearInterval(progressInterval)
+
       setUploadProgress(100)
       
       addProject(newProject)
