@@ -82,6 +82,10 @@ app.add_middleware(
 # Include unified API routes
 app.include_router(api_router, prefix="/api/v1")
 
+# AgentPit OAuth 路由挂在 /api 下（不带 /v1，匹配回调地址）
+from .api.v1.auth import router as auth_router
+app.include_router(auth_router, prefix="/api", tags=["auth"])
+
 # 添加独立的video-categories端点
 @app.get("/api/v1/video-categories")
 async def get_video_categories():

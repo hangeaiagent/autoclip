@@ -29,7 +29,6 @@ from .debug import router as debug_router
 from .simple_progress import router as simple_progress_router
 from ..upload_queue import router as upload_queue_router
 from ..account_health import router as account_health_router
-from .auth import router as auth_router
 from .tokens import router as tokens_router
 
 # 注册所有路由
@@ -53,7 +52,6 @@ api_router.include_router(debug_router, tags=["debug"])
 api_router.include_router(simple_progress_router, tags=["simple-progress"])
 api_router.include_router(upload_queue_router, tags=["upload-queue"])
 api_router.include_router(account_health_router, tags=["account-health"])
-api_router.include_router(auth_router, tags=["auth"])
 api_router.include_router(tokens_router, tags=["tokens"])
 
 __all__ = ["api_router"]
