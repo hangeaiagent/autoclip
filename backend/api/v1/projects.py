@@ -81,11 +81,13 @@ async def upload_files(
         from ...core.path_utils import get_project_raw_directory
         raw_dir = get_project_raw_directory(project_id)
         
-        # 保存视频文件
+        # 保存视频文件（分块写入，避免大文件内存问题）
         video_path = raw_dir / "input.mp4"
+        import shutil
+        await video_file.seek(0)
         with open(video_path, "wb") as f:
-            content = await video_file.read()
-            f.write(content)
+            shutil.copyfileobj(video_file.file, f)
+        logger.info(f"视频文件已保存: {video_path}, 大小: {video_path.stat().st_size} bytes")
         
         # 更新项目的视频路径
         project.video_path = str(video_path)

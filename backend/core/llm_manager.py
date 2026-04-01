@@ -6,9 +6,16 @@ import json
 import logging
 import os
 import time
+from pathlib import Path
 from typing import Any, Dict, Optional
 
+from dotenv import load_dotenv
 from openai import OpenAI
+
+# 确保 .env 被加载（Celery worker 不会自动加载）
+_env_path = Path(__file__).parent.parent.parent / ".env"
+if _env_path.exists():
+    load_dotenv(_env_path)
 
 logger = logging.getLogger(__name__)
 

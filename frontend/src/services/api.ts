@@ -148,7 +148,7 @@ export const projectApi = {
 
     return api.post('/projects/upload', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': undefined,
       },
       onUploadProgress: (progressEvent) => {
         if (data.onUploadProgress && progressEvent.total) {
