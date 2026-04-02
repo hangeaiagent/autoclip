@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Button, message, Progress, Space, Typography, Card, Input, Spin } from 'antd'
-import { InboxOutlined, VideoCameraOutlined, FileTextOutlined, SubnodeOutlined } from '@ant-design/icons'
+import { Button, message, Modal, Progress, Space, Typography, Card, Input, Spin } from 'antd'
+import { InboxOutlined, VideoCameraOutlined, FileTextOutlined, SubnodeOutlined, LoginOutlined } from '@ant-design/icons'
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
 import { projectApi, VideoCategory, VideoCategoriesResponse } from '../services/api'
 import { useProjectStore } from '../store/useProjectStore'
+import { useAuth } from '../context/AuthContext'
 
 const { Text, Title } = Typography
 
@@ -14,6 +15,7 @@ interface FileUploadProps {
 
 const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [projectName, setProjectName] = useState('')
@@ -24,8 +26,21 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
     video?: File
     srt?: File
   }>({})
-  
+
   const { addProject } = useProjectStore()
+
+  const showLoginPrompt = () => {
+    Modal.confirm({
+      title: t('auth.loginRequired', '请先登录'),
+      content: t('auth.loginToImport', '请先在 AgentPit 授权登录后才能导入文件'),
+      okText: t('auth.goLogin', '去登录'),
+      cancelText: t('common.cancel', '取消'),
+      icon: <LoginOutlined style={{ color: '#4facfe' }} />,
+      onOk: () => {
+        window.location.href = `/api/auth/agentpit/sso?returnUrl=${encodeURIComponent(window.location.pathname)}`
+      }
+    })
+  }
 
   // 加载视频分类配置
   useEffect(() => {
@@ -52,6 +67,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
   }, [])
 
   const onDrop = (acceptedFiles: File[]) => {
+    if (!user) {
+      showLoginPrompt()
+      return
+    }
     const newFiles = { ...files }
     
     acceptedFiles.forEach(file => {

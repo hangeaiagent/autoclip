@@ -1,9 +1,11 @@
 """FastAPI应用入口点"""
 
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from jose import jwt, JWTError
 
 # 导入配置管理
 from .core.config import settings, get_logging_config, get_api_key
@@ -70,6 +72,30 @@ async def shutdown_event():
     # logger.info("WebSocket网关服务已停止")
     logger.info("WebSocket网关服务已禁用")
 
+# 全局认证中间件：要求所有 /api/v1/ 接口（除 health 外）必须登录
+class AuthMiddleware(BaseHTTPMiddleware):
+    PUBLIC_PREFIXES = [
+        "/api/v1/health",
+        "/api/auth/",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+    ]
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if path.startswith("/api/v1/") and not any(path.startswith(p) for p in self.PUBLIC_PREFIXES):
+            auth_header = request.headers.get("Authorization", "")
+            if not auth_header.startswith("Bearer "):
+                return JSONResponse(status_code=401, content={"detail": "未登录或token已过期"})
+            try:
+                payload = jwt.decode(auth_header[7:], settings.secret_key, algorithms=["HS256"])
+                if not payload.get("sub"):
+                    return JSONResponse(status_code=401, content={"detail": "无效的token"})
+            except JWTError:
+                return JSONResponse(status_code=401, content={"detail": "token已过期或无效"})
+        return await call_next(request)
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -78,6 +104,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 认证中间件（在CORS之后添加，确保预检请求不被拦截）
+app.add_middleware(AuthMiddleware)
 
 # Include unified API routes
 app.include_router(api_router, prefix="/api/v1")

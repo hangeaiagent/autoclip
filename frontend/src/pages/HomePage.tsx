@@ -16,6 +16,7 @@ import BilibiliDownload from '../components/BilibiliDownload'
 import { projectApi } from '../services/api'
 import { Project, useProjectStore } from '../store/useProjectStore'
 import { useProjectPolling } from '../hooks/useProjectPolling'
+import { useAuth } from '../context/AuthContext'
 // import { useWebSocket, WebSocketEventMessage } from '../hooks/useWebSocket'  // 已禁用WebSocket系统
 
 const { Content } = Layout
@@ -25,6 +26,7 @@ const { Option } = Select
 const HomePage: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { projects, setProjects, deleteProject, loading, setLoading } = useProjectStore()
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [activeTab, setActiveTab] = useState<'upload' | 'bilibili'>('upload')
@@ -61,15 +63,24 @@ const HomePage: React.FC = () => {
     onProjectsUpdate: (updatedProjects) => {
       setProjects(updatedProjects || [])
     },
-    enabled: true,
+    enabled: !!user,
     interval: 10000 // 10秒轮询一次
   })
 
   useEffect(() => {
-    loadProjects()
-  }, [])
+    if (user) {
+      loadProjects()
+    } else {
+      setProjects([])
+      setLoading(false)
+    }
+  }, [user])
 
   const loadProjects = async () => {
+    if (!user) {
+      setProjects([])
+      return
+    }
     setLoading(true)
     try {
       // 从后端API获取真实项目数据

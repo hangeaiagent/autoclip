@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { Button, message, Progress, Input, Card, Typography, Space, Spin, Select } from 'antd'
-import { DownloadOutlined } from '@ant-design/icons'
+import { Button, message, Modal, Progress, Input, Card, Typography, Space, Spin, Select } from 'antd'
+import { DownloadOutlined, LoginOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { projectApi, bilibiliApi, VideoCategory, BilibiliDownloadTask } from '../services/api'
 import { useProjectStore } from '../store/useProjectStore'
+import { useAuth } from '../context/AuthContext'
 
 const { Text } = Typography
 
@@ -15,6 +16,7 @@ interface BilibiliDownloadProps {
 
 const BilibiliDownload: React.FC<BilibiliDownloadProps> = ({ onDownloadSuccess }) => {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const [url, setUrl] = useState('')
   const [projectName, setProjectName] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('')
@@ -106,7 +108,24 @@ const BilibiliDownload: React.FC<BilibiliDownloadProps> = ({ onDownloadSuccess }
     return null
   }
 
+  const showLoginPrompt = () => {
+    Modal.confirm({
+      title: t('auth.loginRequired', '请先登录'),
+      content: t('auth.loginToImport', '请先在 AgentPit 授权登录后才能导入文件'),
+      okText: t('auth.goLogin', '去登录'),
+      cancelText: t('common.cancel', '取消'),
+      icon: <LoginOutlined style={{ color: '#4facfe' }} />,
+      onOk: () => {
+        window.location.href = `/api/auth/agentpit/sso?returnUrl=${encodeURIComponent(window.location.pathname)}`
+      }
+    })
+  }
+
   const parseVideoInfo = async () => {
+    if (!user) {
+      showLoginPrompt()
+      return
+    }
     if (!url.trim()) {
       setError(t('bilibiliDownload.enterCorrectLink'))
       return
@@ -187,6 +206,10 @@ const BilibiliDownload: React.FC<BilibiliDownloadProps> = ({ onDownloadSuccess }
   }
 
   const handleDownload = async () => {
+    if (!user) {
+      showLoginPrompt()
+      return
+    }
     if (!url.trim()) {
       message.error(t('bilibiliDownload.enterVideoLink'))
       return

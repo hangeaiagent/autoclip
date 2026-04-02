@@ -32,7 +32,14 @@ api.interceptors.response.use(
   },
   (error) => {
     console.error('API Error:', error)
-    
+
+    // 处理401未授权：清除本地过期token（不自动跳转，由页面组件处理登录提示）
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      return Promise.reject(error)
+    }
+
     // 特殊处理429错误（系统繁忙）
     if (error.response?.status === 429) {
       const message = error.response?.data?.detail || '系统正在处理其他项目，请稍后再试'

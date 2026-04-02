@@ -18,11 +18,108 @@ from backend.schemas.project import (
     ProjectType, ProjectStatus
 )
 from backend.schemas.base import PaginationParams
-from backend.utils.auth import get_current_user
+from backend.utils.auth import require_current_user
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _resolve_clip_video_path(clip, project_id: str, db: Session) -> Optional[Path]:
+    """
+    解析切片视频文件的实际路径。
+    优先使用数据库中存储的video_path，如果文件不存在则通过管道ID在本地项目目录中查找。
+    找到后自动更新数据库中的路径。
+    """
+    # 1. 尝试数据库中存储的路径
+    if clip.video_path:
+        stored_path = Path(clip.video_path)
+        if stored_path.exists():
+            return stored_path
+
+    # 2. 通过管道ID在本地项目目录中查找
+    from ...core.path_utils import get_project_directory
+    project_dir = get_project_directory(project_id)
+    clips_dir = project_dir / "output" / "clips"
+    if not clips_dir.exists():
+        return None
+
+    # 从clip_metadata中获取管道ID
+    pipeline_id = None
+    if clip.clip_metadata and isinstance(clip.clip_metadata, dict):
+        pipeline_id = clip.clip_metadata.get('id')
+
+    found_path = None
+    if pipeline_id:
+        matches = list(clips_dir.glob(f"{pipeline_id}_*.mp4"))
+        if matches:
+            found_path = matches[0]
+
+    # 3. 如果管道ID没找到，尝试用标题匹配
+    if not found_path and clip.title:
+        from ...utils.video_processor import VideoProcessor
+        safe_title = VideoProcessor.sanitize_filename(clip.title)
+        for f in clips_dir.glob("*.mp4"):
+            if safe_title in f.stem:
+                found_path = f
+                break
+
+    # 4. 找到文件后更新数据库路径
+    if found_path and found_path.exists():
+        try:
+            clip.video_path = str(found_path)
+            db.commit()
+            logger.info(f"已更新切片 {clip.id} 的video_path: {found_path}")
+        except Exception as e:
+            logger.warning(f"更新切片video_path失败: {e}")
+        return found_path
+
+    return None
+
+
+def _resolve_collection_video_path(collection, project_id: str, db: Session) -> Optional[Path]:
+    """
+    解析合集视频文件的实际路径。
+    优先使用数据库中存储的export_path，如果文件不存在则在本地项目目录中查找。
+    """
+    # 1. 尝试数据库中存储的路径
+    if collection.export_path:
+        stored_path = Path(collection.export_path)
+        if stored_path.exists():
+            return stored_path
+
+    # 2. 在本地项目目录中查找
+    from ...core.path_utils import get_project_directory
+    project_dir = get_project_directory(project_id)
+    collections_dir = project_dir / "output" / "collections"
+    if not collections_dir.exists():
+        return None
+
+    # 尝试用合集名称匹配
+    found_path = None
+    if collection.name:
+        from ...utils.video_processor import VideoProcessor
+        safe_name = VideoProcessor.sanitize_filename(collection.name)
+        candidate = collections_dir / f"{safe_name}.mp4"
+        if candidate.exists():
+            found_path = candidate
+        else:
+            for f in collections_dir.glob("*.mp4"):
+                if safe_name in f.stem:
+                    found_path = f
+                    break
+
+    # 3. 找到文件后更新数据库路径
+    if found_path and found_path.exists():
+        try:
+            collection.export_path = str(found_path)
+            db.commit()
+            logger.info(f"已更新合集 {collection.id} 的export_path: {found_path}")
+        except Exception as e:
+            logger.warning(f"更新合集export_path失败: {e}")
+        return found_path
+
+    return None
 
 
 def get_project_service(db: Session = Depends(get_db)) -> ProjectService:
@@ -47,7 +144,7 @@ async def upload_files(
     project_name: str = Form(...),
     video_category: Optional[str] = Form(None),
     project_service: ProjectService = Depends(get_project_service),
-    current_user: Optional[dict] = Depends(get_current_user)
+    current_user: dict = Depends(require_current_user)
 ):
     """Upload video file and optional subtitle file to create a new project. If no subtitle is provided, Whisper will automatically generate one."""
     try:
@@ -79,9 +176,8 @@ async def upload_files(
         project = project_service.create_project(project_data)
 
         # 设置用户归属
-        if current_user:
-            project.user_id = current_user.get("sub")
-            project_service.db.commit()
+        project.user_id = current_user.get("sub")
+        project_service.db.commit()
 
         # 保存文件到项目目录
         project_id = str(project.id)
@@ -166,14 +262,13 @@ async def upload_files(
 async def create_project(
     project_data: ProjectCreate,
     project_service: ProjectService = Depends(get_project_service),
-    current_user: Optional[dict] = Depends(get_current_user)
+    current_user: dict = Depends(require_current_user)
 ):
     """Create a new project."""
     try:
         project = project_service.create_project(project_data)
-        if current_user:
-            project.user_id = current_user.get("sub")
-            project_service.db.commit()
+        project.user_id = current_user.get("sub")
+        project_service.db.commit()
         # Convert to response (simplified for now)
         return ProjectResponse(
             id=str(project.id),  # Use actual project ID
@@ -203,7 +298,7 @@ async def get_projects(
     project_type: Optional[str] = Query(None, description="Filter by project type"),
     search: Optional[str] = Query(None, description="Search in name and description"),
     project_service: ProjectService = Depends(get_project_service),
-    current_user: Optional[dict] = Depends(get_current_user)
+    current_user: dict = Depends(require_current_user)
 ):
     """Get paginated projects with optional filtering. Only returns current user's projects."""
     try:
@@ -217,7 +312,7 @@ async def get_projects(
                 search=search
             )
 
-        user_id = current_user.get("sub") if current_user else None
+        user_id = current_user.get("sub")
         return project_service.get_projects_paginated(pagination, filters, user_id=user_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1231,24 +1326,21 @@ async def download_project_file(
             collection = db.query(Collection).filter(Collection.id == collection_id).first()
             if not collection:
                 raise HTTPException(status_code=404, detail="合集不存在")
-            
-            if not collection.export_path:
-                raise HTTPException(status_code=404, detail="合集视频文件不存在")
-            
-            file_path = Path(collection.export_path)
-            if not file_path.exists():
-                raise HTTPException(status_code=404, detail="合集视频文件不存在")
-            
+
+            file_path = _resolve_collection_video_path(collection, project_id, db)
+            if not file_path:
+                raise HTTPException(status_code=404, detail="合集视频文件不存在，请确认视频已生成")
+
             # 生成下载文件名
             collection_name = collection.name or f"collection_{collection_id}"
             from ...utils.video_processor import VideoProcessor
             safe_name = VideoProcessor.sanitize_filename(collection_name)
             filename = f"{safe_name}.mp4"
-            
+
             # 对文件名进行URL编码
             import urllib.parse
             encoded_filename = urllib.parse.quote(filename.encode('utf-8'))
-            
+
             return FileResponse(
                 path=str(file_path),
                 filename=filename,
@@ -1257,31 +1349,28 @@ async def download_project_file(
                     "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
                 }
             )
-        
+
         elif clip_id:
             # 下载切片视频
             from ...models.clip import Clip
             clip = db.query(Clip).filter(Clip.id == clip_id).first()
             if not clip:
                 raise HTTPException(status_code=404, detail="切片不存在")
-            
-            if not clip.video_path:
-                raise HTTPException(status_code=404, detail="切片视频文件不存在")
-            
-            file_path = Path(clip.video_path)
-            if not file_path.exists():
-                raise HTTPException(status_code=404, detail="切片视频文件不存在")
-            
+
+            file_path = _resolve_clip_video_path(clip, project_id, db)
+            if not file_path:
+                raise HTTPException(status_code=404, detail="切片视频文件不存在，请确认视频已生成")
+
             # 生成下载文件名
             clip_title = clip.title or f"clip_{clip_id}"
             from ...utils.video_processor import VideoProcessor
             safe_name = VideoProcessor.sanitize_filename(clip_title)
             filename = f"{safe_name}.mp4"
-            
+
             # 对文件名进行URL编码
             import urllib.parse
             encoded_filename = urllib.parse.quote(filename.encode('utf-8'))
-            
+
             return FileResponse(
                 path=str(file_path),
                 filename=filename,
