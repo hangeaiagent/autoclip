@@ -17,25 +17,109 @@ logger = logging.getLogger(__name__)
 
 class TimelineExtractor:
     """从大纲和SRT字幕中提取精确时间线"""
-    
+
+    # 静音间隔阈值（秒），超过此值认为是话题分界
+    SILENCE_GAP_THRESHOLD = 5.0
+
     def __init__(self, metadata_dir: Path = None, prompt_files: Dict = None):
         self.llm_client = LLMClient()
         self.text_processor = TextProcessor()
-        
+
         # 使用传入的metadata_dir或默认值
         if metadata_dir is None:
             metadata_dir = METADATA_DIR
         self.metadata_dir = metadata_dir
-        
+
         # 加载提示词
         prompt_files_to_use = prompt_files if prompt_files is not None else PROMPT_FILES
         with open(prompt_files_to_use['timeline'], 'r', encoding='utf-8') as f:
             self.timeline_prompt = f.read()
-            
+
         # SRT块的目录
         self.srt_chunks_dir = self.metadata_dir / "step1_srt_chunks"
         self.timeline_chunks_dir = self.metadata_dir / "step2_timeline_chunks"
         self.llm_raw_output_dir = self.metadata_dir / "step2_llm_raw_output"
+
+    def _segment_srt_by_silence(self, srt_chunk_data: List[Dict]) -> List[List[Dict]]:
+        """
+        根据字幕间的静音间隔将SRT预分割为多个片段。
+        当两条相邻字幕之间的时间间隔超过阈值时，视为话题分界。
+        返回：列表的列表，每个子列表是一个连续的SRT片段。
+        """
+        if not srt_chunk_data:
+            return []
+
+        segments = []
+        current_segment = [srt_chunk_data[0]]
+
+        for i in range(1, len(srt_chunk_data)):
+            prev_end = self.text_processor.time_to_seconds(
+                srt_chunk_data[i - 1]['end_time'].replace(',', '.')
+            )
+            curr_start = self.text_processor.time_to_seconds(
+                srt_chunk_data[i]['start_time'].replace(',', '.')
+            )
+            gap = curr_start - prev_end
+
+            if gap >= self.SILENCE_GAP_THRESHOLD:
+                segments.append(current_segment)
+                current_segment = [srt_chunk_data[i]]
+            else:
+                current_segment.append(srt_chunk_data[i])
+
+        segments.append(current_segment)
+        logger.info(f"  > SRT预分割：{len(srt_chunk_data)} 条字幕 → {len(segments)} 个片段（间隔阈值 {self.SILENCE_GAP_THRESHOLD}s）")
+        return segments
+
+    def _build_srt_text(self, srt_entries: List[Dict]) -> str:
+        """将SRT条目列表构建为LLM可读的SRT文本"""
+        text = ""
+        for sub in srt_entries:
+            text += f"{sub['index']}\\n{sub['start_time']} --> {sub['end_time']}\\n{sub['text']}\\n\\n"
+        return text
+
+    def _match_topics_to_srt_segments(self, chunk_outlines: List[Dict], srt_segments: List[List[Dict]]) -> List[str]:
+        """
+        将话题与SRT片段配对。
+        策略：如果话题数等于SRT片段数，直接一一对应；
+        否则按顺序分配，多余的话题使用完整SRT。
+        返回：每个话题对应的SRT文本列表。
+        """
+        num_topics = len(chunk_outlines)
+        num_segments = len(srt_segments)
+
+        if num_topics == num_segments:
+            logger.info(f"  > 话题数({num_topics}) = SRT片段数({num_segments})，一一对应")
+            return [self._build_srt_text(seg) for seg in srt_segments]
+
+        if num_segments == 1:
+            logger.info(f"  > SRT未能分割（仅1个片段），所有话题使用完整SRT")
+            full_srt = self._build_srt_text(srt_segments[0])
+            return [full_srt] * num_topics
+
+        # 话题数和片段数不等时，尝试合并相邻片段来匹配
+        if num_topics < num_segments:
+            logger.info(f"  > 话题数({num_topics}) < SRT片段数({num_segments})，合并相邻片段")
+            # 将多个SRT片段均匀分配给话题
+            result = []
+            segments_per_topic = num_segments / num_topics
+            for i in range(num_topics):
+                start_idx = int(i * segments_per_topic)
+                end_idx = int((i + 1) * segments_per_topic)
+                merged = []
+                for j in range(start_idx, min(end_idx, num_segments)):
+                    merged.extend(srt_segments[j])
+                result.append(self._build_srt_text(merged))
+            return result
+
+        # num_topics > num_segments：部分话题共享SRT片段
+        logger.info(f"  > 话题数({num_topics}) > SRT片段数({num_segments})，部分话题共享片段")
+        result = []
+        topics_per_segment = num_topics / num_segments
+        for i in range(num_topics):
+            seg_idx = min(int(i / topics_per_segment), num_segments - 1)
+            result.append(self._build_srt_text(srt_segments[seg_idx]))
+        return result
 
     def extract_timeline(self, outlines: List[Dict]) -> List[Dict]:
         """
@@ -70,20 +154,20 @@ class TimelineExtractor:
                 logger.warning(f"  > 话题 '{outline.get('title', '未知')}' 缺少 chunk_index，将被跳过。")
 
         all_timeline_data = []
-        # 3. 遍历每个块，批量处理，并将结果存为独立的JSON文件
+        # 3. 遍历每个块，逐个话题独立处理，确保每个话题都有对应的时间段
         for chunk_index, chunk_outlines in outlines_by_chunk.items():
             logger.info(f"处理块 {chunk_index}，其中包含 {len(chunk_outlines)} 个话题...")
-            
-            # 每次都重新处理，不使用缓存
+
             chunk_output_path = self.timeline_chunks_dir / f"chunk_{chunk_index}.json"
+            chunk_parsed_items = []
 
             try:
-                # 首先加载对应的SRT块文件，无论是否使用缓存都需要这些信息
+                # 加载对应的SRT块文件
                 srt_chunk_path = self.srt_chunks_dir / f"chunk_{chunk_index}.json"
                 if not srt_chunk_path.exists():
                     logger.warning(f"  > 找不到对应的SRT块文件: {srt_chunk_path}，跳过整个块。")
                     continue
-                
+
                 with open(srt_chunk_path, 'r', encoding='utf-8') as f:
                     srt_chunk_data = json.load(f)
 
@@ -95,84 +179,76 @@ class TimelineExtractor:
                 chunk_start_time = srt_chunk_data[0]['start_time']
                 chunk_end_time = srt_chunk_data[-1]['end_time']
 
-                raw_response = ""
-                llm_cache_path = self.llm_raw_output_dir / f"chunk_{chunk_index}.txt"
+                # 预分割SRT：根据静音间隔将SRT切分为多个片段
+                srt_segments = self._segment_srt_by_silence(srt_chunk_data)
 
-                if llm_cache_path.exists():
-                    logger.info(f"  > 找到块 {chunk_index} 的LLM原始响应缓存，直接读取。")
-                    with open(llm_cache_path, 'r', encoding='utf-8') as f:
-                        raw_response = f.read()
-                else:
-                    logger.info(f"  > 未找到LLM缓存，开始调用API...")
-                    
-                    # 构建用于LLM的SRT文本
-                    srt_text_for_prompt = ""
-                    for sub in srt_chunk_data:
-                        srt_text_for_prompt += f"{sub['index']}\\n{sub['start_time']} --> {sub['end_time']}\\n{sub['text']}\\n\\n"
-                    
-                    # 为LLM准备一个"干净"的输入，只包含它需要的信息
+                # 将话题与SRT片段配对
+                topic_srt_texts = self._match_topics_to_srt_segments(chunk_outlines, srt_segments)
+
+                # 逐个话题独立调用LLM，每个话题只看到对应的SRT片段
+                for topic_idx, single_outline in enumerate(chunk_outlines):
+                    topic_title = single_outline.get('title', '未知')
+                    topic_srt = topic_srt_texts[topic_idx]
+                    logger.info(f"  > 处理话题 {topic_idx + 1}/{len(chunk_outlines)}: {topic_title}")
+
                     llm_input_outlines = [
-                        {"title": o.get("title"), "subtopics": o.get("subtopics")}
-                        for o in chunk_outlines
+                        {"title": single_outline.get("title"), "subtopics": single_outline.get("subtopics")}
                     ]
 
                     input_data = {
-                        "outline": llm_input_outlines,  # 使用干净的数据
-                        "srt_text": srt_text_for_prompt
+                        "outline": llm_input_outlines,
+                        "srt_text": topic_srt
                     }
-                    
-                    # 调用LLM获取原始响应，带重试机制
+
                     parsed_items = None
                     max_parse_retries = 2
-                    
+
                     for retry_count in range(max_parse_retries + 1):
                         try:
                             raw_response = self.llm_client.call_with_retry(self.timeline_prompt, input_data)
-                            
+
                             if not raw_response:
-                                logger.warning(f"  > 块 {chunk_index} LLM响应为空，跳过")
+                                logger.warning(f"  > 话题 '{topic_title}' LLM响应为空，跳过")
                                 break
-                            
-                            # 保存原始响应到缓存
-                            cache_file = self.llm_raw_output_dir / f"chunk_{chunk_index}_attempt_{retry_count}.txt"
+
+                            # 保存原始响应
+                            cache_file = self.llm_raw_output_dir / f"chunk_{chunk_index}_topic_{topic_idx}_attempt_{retry_count}.txt"
                             with open(cache_file, 'w', encoding='utf-8') as f:
                                 f.write(raw_response)
-                            
-                            # 解析LLM的原始响应
+
                             parsed_items = self._parse_and_validate_response(
-                                raw_response, 
-                                chunk_start_time, 
+                                raw_response,
+                                chunk_start_time,
                                 chunk_end_time,
                                 chunk_index
                             )
-                            
+
                             if parsed_items:
-                                # 保存解析后的结果
-                                with open(chunk_output_path, 'w', encoding='utf-8') as f:
-                                    json.dump(parsed_items, f, ensure_ascii=False, indent=2)
-                                
-                                logger.info(f"  > 块 {chunk_index} 成功解析 {len(parsed_items)} 个时间段")
-                                break  # 成功解析，跳出重试循环
+                                logger.info(f"  > 话题 '{topic_title}' 成功定位时间段")
+                                chunk_parsed_items.extend(parsed_items)
+                                break
                             else:
                                 if retry_count < max_parse_retries:
-                                    logger.warning(f"  > 块 {chunk_index} 解析失败，尝试重试 ({retry_count + 1}/{max_parse_retries + 1})")
-                                    # 在重试时强化提示词，强调JSON格式
+                                    logger.warning(f"  > 话题 '{topic_title}' 解析失败，重试 ({retry_count + 1}/{max_parse_retries + 1})")
                                     input_data['additional_instruction'] = "\n\n【重要】输出要求：\n1. 必须以[开始，以]结束\n2. 使用英文双引号，不要使用中文引号\n3. 字符串中的引号必须转义为\\\"\n4. 不要添加任何解释文字或代码块标记\n5. 确保JSON格式完全正确"
                                 else:
-                                    logger.error(f"  > 块 {chunk_index} 经过 {max_parse_retries + 1} 次尝试仍然解析失败")
-                                    # 保存最后一次的原始响应以便调试
-                                    self._save_debug_response(raw_response, chunk_index, "final_parse_failure")
-                                    
+                                    logger.error(f"  > 话题 '{topic_title}' 经过 {max_parse_retries + 1} 次尝试仍然解析失败")
+                                    self._save_debug_response(raw_response, chunk_index, f"topic_{topic_idx}_final_parse_failure")
+
                         except Exception as parse_error:
-                            logger.error(f"  > 块 {chunk_index} 第 {retry_count + 1} 次尝试解析过程中发生异常: {parse_error}")
+                            logger.error(f"  > 话题 '{topic_title}' 第 {retry_count + 1} 次尝试解析异常: {parse_error}")
                             if retry_count == max_parse_retries:
-                                # 保存原始响应以便调试
-                                self._save_debug_response(raw_response if 'raw_response' in locals() else "No response", chunk_index, "parse_exception")
+                                self._save_debug_response(raw_response if 'raw_response' in locals() else "No response", chunk_index, f"topic_{topic_idx}_parse_exception")
                             continue
-                    
+
                     if not parsed_items:
-                         logger.warning(f"  > 块 {chunk_index} 最终解析失败，跳过")
-                         continue
+                        logger.warning(f"  > 话题 '{topic_title}' 最终解析失败，跳过")
+
+                # 保存该块的所有结果
+                if chunk_parsed_items:
+                    with open(chunk_output_path, 'w', encoding='utf-8') as f:
+                        json.dump(chunk_parsed_items, f, ensure_ascii=False, indent=2)
+                    logger.info(f"  > 块 {chunk_index} 共成功解析 {len(chunk_parsed_items)} 个时间段（输入 {len(chunk_outlines)} 个话题）")
 
             except Exception as e:
                 logger.error(f"  > 处理块 {chunk_index} 时出错: {str(e)}")
