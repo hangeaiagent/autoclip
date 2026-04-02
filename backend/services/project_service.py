@@ -103,17 +103,22 @@ class ProjectService(BaseService[Project, ProjectCreate, ProjectUpdate, ProjectR
         )
     
     def get_projects_paginated(
-        self, 
+        self,
         pagination: PaginationParams,
-        filters: Optional[ProjectFilter] = None
+        filters: Optional[ProjectFilter] = None,
+        user_id: Optional[str] = None
     ) -> ProjectListResponse:
-        """Get paginated projects with filtering."""
+        """Get paginated projects with filtering. If user_id is provided, only return that user's projects."""
         # Convert filters to dict
         filter_dict = {}
         if filters:
             filter_data = filters.model_dump()
             filter_dict = {k: v for k, v in filter_data.items() if v is not None}
-        
+
+        # 按用户过滤
+        if user_id:
+            filter_dict["user_id"] = user_id
+
         items, pagination_response = self.get_paginated(pagination, filter_dict)
         
         # Convert to response schemas

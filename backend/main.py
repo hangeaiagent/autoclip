@@ -43,6 +43,8 @@ async def startup_event():
     from .models.bilibili import BilibiliAccount, UploadRecord
     from .models.token_usage import TokenUsage
     Base.metadata.create_all(bind=engine)
+    from .core.database import _run_migrations
+    _run_migrations()
     logger.info("数据库表创建完成")
     
     # 检查API密钥配置

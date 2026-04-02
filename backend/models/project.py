@@ -29,9 +29,17 @@ class ProjectType(str, enum.Enum):
 
 class Project(BaseModel):
     """项目模型"""
-    
+
     __tablename__ = "projects"
-    
+
+    # 用户归属
+    user_id = Column(
+        String(100),
+        nullable=True,
+        index=True,
+        comment="所属用户ID（OAuth sub）"
+    )
+
     # 基本信息
     name = Column(
         String(255), 

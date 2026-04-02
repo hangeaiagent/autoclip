@@ -11,9 +11,13 @@ const api = axios.create({
   },
 })
 
-// 请求拦截器
+// 请求拦截器：自动附带JWT token
 api.interceptors.request.use(
   (config) => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
     return config
   },
   (error) => {

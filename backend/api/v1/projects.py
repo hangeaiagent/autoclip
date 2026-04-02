@@ -18,6 +18,7 @@ from backend.schemas.project import (
     ProjectType, ProjectStatus
 )
 from backend.schemas.base import PaginationParams
+from backend.utils.auth import get_current_user
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,8 @@ async def upload_files(
     srt_file: Optional[UploadFile] = File(None),
     project_name: str = Form(...),
     video_category: Optional[str] = Form(None),
-    project_service: ProjectService = Depends(get_project_service)
+    project_service: ProjectService = Depends(get_project_service),
+    current_user: Optional[dict] = Depends(get_current_user)
 ):
     """Upload video file and optional subtitle file to create a new project. If no subtitle is provided, Whisper will automatically generate one."""
     try:
@@ -75,7 +77,12 @@ async def upload_files(
         
         # 创建项目
         project = project_service.create_project(project_data)
-        
+
+        # 设置用户归属
+        if current_user:
+            project.user_id = current_user.get("sub")
+            project_service.db.commit()
+
         # 保存文件到项目目录
         project_id = str(project.id)
         from ...core.path_utils import get_project_raw_directory
@@ -158,11 +165,15 @@ async def upload_files(
 @router.post("/", response_model=ProjectResponse)
 async def create_project(
     project_data: ProjectCreate,
-    project_service: ProjectService = Depends(get_project_service)
+    project_service: ProjectService = Depends(get_project_service),
+    current_user: Optional[dict] = Depends(get_current_user)
 ):
     """Create a new project."""
     try:
         project = project_service.create_project(project_data)
+        if current_user:
+            project.user_id = current_user.get("sub")
+            project_service.db.commit()
         # Convert to response (simplified for now)
         return ProjectResponse(
             id=str(project.id),  # Use actual project ID
@@ -191,12 +202,13 @@ async def get_projects(
     status: Optional[str] = Query(None, description="Filter by status"),
     project_type: Optional[str] = Query(None, description="Filter by project type"),
     search: Optional[str] = Query(None, description="Search in name and description"),
-    project_service: ProjectService = Depends(get_project_service)
+    project_service: ProjectService = Depends(get_project_service),
+    current_user: Optional[dict] = Depends(get_current_user)
 ):
-    """Get paginated projects with optional filtering."""
+    """Get paginated projects with optional filtering. Only returns current user's projects."""
     try:
         pagination = PaginationParams(page=page, size=size)
-        
+
         filters = None
         if status or project_type or search:
             filters = ProjectFilter(
@@ -204,8 +216,9 @@ async def get_projects(
                 project_type=project_type,
                 search=search
             )
-        
-        return project_service.get_projects_paginated(pagination, filters)
+
+        user_id = current_user.get("sub") if current_user else None
+        return project_service.get_projects_paginated(pagination, filters, user_id=user_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

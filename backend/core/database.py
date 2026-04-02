@@ -90,19 +90,38 @@ def test_connection() -> bool:
         print(f"数据库连接测试失败: {e}")
         return False
 
+def _run_migrations():
+    """运行简单的数据库迁移：为已有表添加缺失的列"""
+    migrations = [
+        ("projects", "user_id", "VARCHAR(100)"),
+    ]
+    with engine.connect() as conn:
+        for table, column, col_type in migrations:
+            try:
+                conn.execute(text(f"SELECT {column} FROM {table} LIMIT 1"))
+            except Exception:
+                try:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
+                    conn.commit()
+                    print(f"  迁移: {table}.{column} 列已添加")
+                except Exception as e:
+                    print(f"  迁移失败 {table}.{column}: {e}")
+
+
 # 数据库初始化
 def init_database():
     """初始化数据库"""
     print("正在初始化数据库...")
-    
+
     # 测试连接
     if not test_connection():
         print("❌ 数据库连接失败")
         return False
-    
+
     # 创建表
     try:
         create_tables()
+        _run_migrations()
         print("✅ 数据库表创建成功")
         return True
     except Exception as e:
