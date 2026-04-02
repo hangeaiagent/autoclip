@@ -181,12 +181,60 @@ class TimelineExtractor:
 
                 # 预分割SRT：根据静音间隔将SRT切分为多个片段
                 srt_segments = self._segment_srt_by_silence(srt_chunk_data)
+                full_srt_text = self._build_srt_text(srt_chunk_data)
 
-                # 将话题与SRT片段配对
-                topic_srt_texts = self._match_topics_to_srt_segments(chunk_outlines, srt_segments)
+                # 判断是否能成功分割：如果SRT片段数 >= 话题数，逐个话题独立处理
+                # 否则回退到批量模式，让LLM在一次调用中处理所有话题
+                use_batch_mode = len(srt_segments) < len(chunk_outlines)
 
-                # 逐个话题独立调用LLM，每个话题只看到对应的SRT片段
-                for topic_idx, single_outline in enumerate(chunk_outlines):
+                if use_batch_mode:
+                    logger.info(f"  > SRT片段数({len(srt_segments)}) < 话题数({len(chunk_outlines)})，使用批量模式")
+                    # 批量模式：一次性将所有话题和完整SRT发给LLM
+                    llm_input_outlines = [
+                        {"title": o.get("title"), "subtopics": o.get("subtopics")}
+                        for o in chunk_outlines
+                    ]
+                    input_data = {
+                        "outline": llm_input_outlines,
+                        "srt_text": full_srt_text
+                    }
+                    parsed_items = None
+                    max_parse_retries = 2
+                    for retry_count in range(max_parse_retries + 1):
+                        try:
+                            raw_response = self.llm_client.call_with_retry(self.timeline_prompt, input_data)
+                            if not raw_response:
+                                logger.warning(f"  > 块 {chunk_index} 批量模式LLM响应为空")
+                                break
+                            cache_file = self.llm_raw_output_dir / f"chunk_{chunk_index}_batch_attempt_{retry_count}.txt"
+                            with open(cache_file, 'w', encoding='utf-8') as f:
+                                f.write(raw_response)
+                            parsed_items = self._parse_and_validate_response(
+                                raw_response, chunk_start_time, chunk_end_time, chunk_index
+                            )
+                            if parsed_items:
+                                logger.info(f"  > 块 {chunk_index} 批量模式成功解析 {len(parsed_items)} 个时间段")
+                                chunk_parsed_items.extend(parsed_items)
+                                break
+                            else:
+                                if retry_count < max_parse_retries:
+                                    logger.warning(f"  > 块 {chunk_index} 批量模式解析失败，重试 ({retry_count + 1}/{max_parse_retries + 1})")
+                                    input_data['additional_instruction'] = "\n\n【重要】输出要求：\n1. 必须以[开始，以]结束\n2. 使用英文双引号，不要使用中文引号\n3. 字符串中的引号必须转义为\\\"\n4. 不要添加任何解释文字或代码块标记\n5. 确保JSON格式完全正确"
+                                else:
+                                    logger.error(f"  > 块 {chunk_index} 批量模式经过 {max_parse_retries + 1} 次尝试仍然解析失败")
+                                    self._save_debug_response(raw_response, chunk_index, "batch_final_parse_failure")
+                        except Exception as parse_error:
+                            logger.error(f"  > 块 {chunk_index} 批量模式第 {retry_count + 1} 次尝试解析异常: {parse_error}")
+                            if retry_count == max_parse_retries:
+                                self._save_debug_response(raw_response if 'raw_response' in locals() else "No response", chunk_index, "batch_parse_exception")
+                            continue
+                else:
+                    # 将话题与SRT片段配对
+                    topic_srt_texts = self._match_topics_to_srt_segments(chunk_outlines, srt_segments)
+
+                # 逐话题独立模式（仅在非批量模式时执行）
+                if not use_batch_mode:
+                  for topic_idx, single_outline in enumerate(chunk_outlines):
                     topic_title = single_outline.get('title', '未知')
                     topic_srt = topic_srt_texts[topic_idx]
                     logger.info(f"  > 处理话题 {topic_idx + 1}/{len(chunk_outlines)}: {topic_title}")
