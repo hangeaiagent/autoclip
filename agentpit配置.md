@@ -9,8 +9,8 @@
 
 | 项目 | 值 |
 |------|------|
-| Client ID | `cmnfpvisy0004604to8gnj5l4` |
-| Client Secret | `cmnfpvisy0005604t438gm5vr` |
+| Client ID | `cmnkg7unr002g60t97p225r1k` |
+| Client Secret | `cmnkg7unr002h60t9cwckpfar` |
 | 回调地址 | `https://autoclip.agentpit.io/api/auth/agentpit/callback` |
 | 授权地址 | `https://agentpit.io/api/oauth/authorize` |
 | Token 地址 | `https://agentpit.io/api/oauth/token` |
@@ -22,8 +22,8 @@
 ### 环境变量（后端 .env 添加）
 
 ```
-AGENTPIT_CLIENT_ID=cmnfpvisy0004604to8gnj5l4
-AGENTPIT_CLIENT_SECRET=cmnfpvisy0005604t438gm5vr
+AGENTPIT_CLIENT_ID=cmnkg7unr002g60t97p225r1k
+AGENTPIT_CLIENT_SECRET=cmnkg7unr002h60t9cwckpfar
 AGENTPIT_REDIRECT_URI=https://autoclip.agentpit.io/api/auth/agentpit/callback
 AGENTPIT_AUTHORIZE_URL=https://agentpit.io/api/oauth/authorize
 AGENTPIT_TOKEN_URL=https://agentpit.io/api/oauth/token
